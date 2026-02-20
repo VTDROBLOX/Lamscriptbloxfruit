@@ -107,6 +107,13 @@
     .toast { position: fixed; bottom: 24px; right: 24px; background: #1e7c44; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.85rem; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 9999; }
     .toast.show { opacity: 1; }
 
+    /* Spinner upload */
+    .spinner-wrap { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(13,13,26,0.75); display: none; align-items: center; justify-content: center; border-radius: 8px; z-index: 10; }
+    .spinner-wrap.show { display: flex; }
+    .spinner { width: 36px; height: 36px; border: 4px solid #252545; border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .img-preview { position: relative; }
+
     /* Lì xì canvas */
     #lixiCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 99999; }
   </style>
@@ -142,6 +149,7 @@
       <div class="img-preview" id="imgPreviewBox">
         <img id="imgPreviewEl" src="" alt=""/>
         <span id="imgPreviewText">Chưa có ảnh</span>
+        <div class="spinner-wrap" id="spinnerWrap"><div class="spinner"></div></div>
       </div>
       <div class="upload-right">
         <button class="btn-upload" onclick="document.getElementById('fileInput').click()">Chọn tệp</button>
@@ -280,35 +288,75 @@
       avatar.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`;
     };
     reader.readAsDataURL(file);
-    const apiKey = document.getElementById('apiKey').value.trim() || 'b41a5f8e4e7e41c4ebf3e01d0c9a3f94';
+    const userApiKey = document.getElementById('apiKey').value.trim();
     const prog = document.getElementById('uploadProgress');
     const bar  = document.getElementById('uploadProgressBar');
     const urlEl = document.getElementById('uploadUrl');
-    prog.style.display = 'block'; urlEl.style.display = 'none'; bar.style.width = '30%';
-    const fd = new FormData(); fd.append('image', file);
-    fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {method:'POST', body:fd})
-      .then(r=>r.json())
-      .then(data => {
-        bar.style.width = '100%';
-        setTimeout(()=>{prog.style.display='none'; bar.style.width='0%';}, 700);
-        if (data.data && data.data.url) {
-          imageUrl = data.data.url;
-          document.getElementById('o-img').textContent = `"${imageUrl}"`;
-          urlEl.style.color = 'var(--green)';
-          urlEl.textContent = '✓ Upload thành công! URL: ' + imageUrl;
-        } else {
-          urlEl.style.color = 'var(--red)';
-          urlEl.textContent = '✗ Upload thất bại. Kiểm tra lại API key.';
-        }
-        urlEl.style.display = 'block';
-      })
-      .catch(()=>{
-        bar.style.background = 'var(--red)'; bar.style.width = '100%';
-        setTimeout(()=>{prog.style.display='none'; bar.style.width='0%'; bar.style.background='';}, 700);
-        urlEl.style.color = 'var(--red)';
-        urlEl.textContent = '✗ Lỗi kết nối. Không upload được ảnh.';
-        urlEl.style.display = 'block';
+    const spinner = document.getElementById('spinnerWrap');
+
+    spinner.classList.add('show');
+    prog.style.display = 'block'; urlEl.style.display = 'none'; bar.style.width = '20%';
+
+    // Upload ImgBB không cần key (dùng endpoint công khai)
+    async function uploadImgBBNoKey(file) {
+      const fd = new FormData();
+      fd.append('source', file);
+      fd.append('type', 'file');
+      fd.append('action', 'upload');
+      const res = await fetch('https://imgbb.com/json', {
+        method: 'POST',
+        body: fd
       });
+      const data = await res.json();
+      if (data && data.image && data.image.url) return data.image.url;
+      return null;
+    }
+
+    // Upload ImgBB có key (nếu user cung cấp)
+    async function uploadImgBBWithKey(file, key) {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await fetch('https://api.imgbb.com/1/upload?key=' + key, {method:'POST', body:fd});
+      const data = await res.json();
+      if (data.data && data.data.url) return data.data.url;
+      return null;
+    }
+
+    async function doUpload() {
+      // Nếu user nhập key thì dùng key của user trước
+      if (userApiKey) {
+        try {
+          bar.style.width = '50%';
+          const url = await uploadImgBBWithKey(file, userApiKey);
+          if (url) return url;
+        } catch(e) {}
+      }
+
+      // Thử upload không cần key
+      try {
+        bar.style.width = '75%';
+        const url = await uploadImgBBNoKey(file);
+        if (url) return url;
+      } catch(e) {}
+
+      return null;
+    }
+
+    doUpload().then(url => {
+      bar.style.width = '100%';
+      spinner.classList.remove('show');
+      setTimeout(()=>{prog.style.display='none'; bar.style.width='0%';}, 700);
+      if (url) {
+        imageUrl = url;
+        document.getElementById('o-img').textContent = '"' + imageUrl + '"';
+        urlEl.style.color = 'var(--green)';
+        urlEl.textContent = '✓ Upload thành công! URL: ' + imageUrl;
+      } else {
+        urlEl.style.color = 'var(--yellow)';
+        urlEl.textContent = '⚠ Upload thất bại! Hãy vào api.imgbb.com → đăng ký miễn phí → lấy API key → dán vào ô Khóa API ImgBB.';
+      }
+      urlEl.style.display = 'block';
+    });
   }
 
   // ── Copy ──

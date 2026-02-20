@@ -316,7 +316,7 @@
     const sub    = document.getElementById('scriptSub').value.trim()   || 'Script Sub Title';
     const author = document.getElementById('authorName').value.trim()  || 'Author Name';
     const asub   = document.getElementById('authorSub').value.trim()   || 'Author Info';
-    const text = `-- this script created at https://hoannhatz.github.io/ezscript\ngetgenv().ScriptTitle = "${title}"\ngetgenv().ScriptSubTitle = "${sub}"\ngetgenv().ScriptImage = "${imageUrl}"\ngetgenv().ScriptAuthorName = "${author}"\ngetgenv().ScriptAuthorSubTitle = "${asub}"\nloadstring(game:HttpGet("https://raw.githubusercontent.com/hoannhatz/Script/refs/heads/main/EZScript.lua"))()`;
+    const text = `-- this script created at https://lambloxfruitscript.vercel.app/\ngetgenv().ScriptTitle = "${title}"\ngetgenv().ScriptSubTitle = "${sub}"\ngetgenv().ScriptImage = "${imageUrl}"\ngetgenv().ScriptAuthorName = "${author}"\ngetgenv().ScriptAuthorSubTitle = "${asub}"\nloadstring(game:HttpGet("https://raw.githubusercontent.com/hoannhatz/Script/refs/heads/main/EZScript.lua"))()`;
     navigator.clipboard.writeText(text).then(()=>{
       const btn = document.getElementById('copyBtn');
       btn.textContent = 'Đã sao chép!'; btn.classList.add('copied');
